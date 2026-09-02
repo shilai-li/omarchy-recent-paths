@@ -33,6 +33,7 @@ Panel {
   readonly property string home: host ? host.home : ""
   readonly property bool zoxideMissing: host ? host.zoxideMissing : false
   readonly property bool scanned: host ? host.scanned : false
+  readonly property bool scanFailed: host ? host.scanFailed : false
 
   property int selectedIndex: 0
   property bool cursorActive: false
@@ -262,7 +263,7 @@ Panel {
           width: parent.width
           visible: root.rows.length === 0
           textFormat: Text.PlainText
-          text: Model.emptyMessage(root.zoxideMissing, root.scanned)
+          text: Model.emptyMessage(root.zoxideMissing, root.scanned, root.scanFailed)
           color: root.dim
           font.family: root.contentFontFamily
           font.pixelSize: Style.font.bodySmall

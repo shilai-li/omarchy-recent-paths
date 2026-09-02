@@ -32,7 +32,7 @@ Non-negotiables:
 manifest.json      one kind; barWidget.schema mirrors every setting
 BarWidget.qml      bar glyph; owns the scan, the pin file, IPC, and both launches
 Panel.qml          the list (loaded via Loader, NOT a declared kind)
-Model.js           pure logic: path normalization, merge, pins, the scan script
+Model.js           pure logic: limits, child env + argv, the scripts, paths, merge, pins
 test/model-test.sh unit tests for Model.js — plain node, no compositor
 ```
 
@@ -62,9 +62,43 @@ screen, so that is the only time it is built — no timer, no watcher, no
 freshness nobody can observe and cost a fork per tick, per monitor.
 
 **Every path is data, never source.** Paths reach the scan and both launchers
-as positional arguments (`bash -lc '<script>' bash "$@"`), which bash expands
-without re-tokenizing. Never interpolate a path into a command string — a
-directory can legally be named `$(rm -rf ~)`, and zoxide will happily list it.
+as positional arguments (`/usr/bin/bash -c '<script>' $0 "$@"`), which bash
+expands without re-tokenizing. Never interpolate a path into a command string —
+a directory can legally be named `$(rm -rf ~)`, and zoxide will happily list
+it. The **only** thing spliced into script source is the trusted bin-dir list,
+and `Model.safeBinDirs` checks its shape first.
+
+**Every child is on a short leash.** A plugin runs inside the shell process,
+with its privileges and the session's whole environment, so `Model.js`'s
+"children" section fixes all three ways in: a fixed interpreter path
+(`Model.BASH`), `-c` rather than `-lc` so no startup file is sourced, and
+`Model.childEnvironment` building the environment from an allowlist over a
+fixed `PATH` instead of inheriting one. Helpers are found by `find_bin`, which
+only ever looks in `Model.TRUSTED_BIN_DIRS`. Adding a child means adding it
+there too — never `Util.execDetached`, which is `bash -lc` with the session's
+environment.
+
+**Every scan has a deadline and a generation.** `Model.scanCommand` puts
+`timeout` in front of bash, so the whole pipeline dies as a process group
+rather than holding a pipe forever; `scanDeadline`/`scanKill` in the widget are
+the backstop for `timeout` itself wedging, and `Component.onDestruction` makes
+sure nothing outlives the widget. Output is applied only when the run's
+`generation` still matches `root.scanGeneration` **and** it exited zero — a
+late or failed answer is not a current one, and `scanFailed` says so on screen
+rather than passing it off as an empty list.
+
+**Everything that crosses a boundary is bounded first.** The state file, the
+scan's output and the pin argv all have caps in `Model.js`'s "limits" section,
+applied before anything is allocated, parsed or passed to a child. `cappedPins`
+is applied on read, on write and on the way into argv, so no single call site
+has to be the one that remembers.
+
+**The state directory is checked, not assumed.** `Model.stateDirScript` creates
+it `0700` and then vouches for it — real directory, not a symlink, ours, with
+the file inside it the same — and `stateReady` gates the `FileView` path and
+`togglePin`. If it cannot be vouched for, the panel still lists directories; it
+just has no pins. `onSaveFailed` reloads rather than leaving a pin on screen
+that nothing on disk backs.
 
 **Existence is re-checked, never remembered.** The scan is the only thing that
 may claim a directory exists. `filterKnown` re-derives the visible pins from
@@ -77,8 +111,8 @@ drive must not cost the user a pin.
 
 **Missing zoxide is reported, never inferred.** The scan prints an explicit
 `E<TAB>zoxide` line, because "no output" also happens on an empty database and
-the two need different messages. `Model.emptyMessage` distinguishes three
-states: no zoxide, not scanned yet, scanned and empty.
+the two need different messages. `Model.emptyMessage` distinguishes four
+states: not scanned yet, the scan itself failed, no zoxide, scanned and empty.
 
 **The panel owns the cursor and nothing else.** Every path, pin and launch
 lives on `BarWidget.qml`; the panel is a read-out that calls back into it. A

@@ -170,15 +170,29 @@ Paths are handed to that scan — and to the terminal and file manager — as
 positional arguments, never spliced into a command line. A directory named
 `$(rm -rf ~)` is a directory name here, not a command.
 
+A plugin runs inside the shell process, with the shell process's privileges,
+so everything it starts is kept on a short leash. Children get a fixed
+interpreter path and a non-login shell, so no startup file is ever sourced,
+and an environment built from an allowlist rather than inherited — nothing
+exported into your session, whether a shell hook, a loader hook or a `PATH`
+entry, reaches anything this plugin runs. Helpers (zoxide, `xdg-open`,
+`xdg-terminal-exec`, `uwsm-app`, `setsid`) are looked for in `/usr/local/bin`
+and `/usr/bin`, and nowhere else. The scan gets one five-second deadline and
+is killed as a process group if it overruns; an answer that arrives late, or
+whose process failed, is discarded rather than shown.
+
 The only thing this plugin owns is your pins:
 
 ```
 ~/.local/state/omarchy/recent-paths/state.json
 ```
 
-Every bar instance watches that file, so pinning on one monitor updates the
-panel on the other, and a mangled file costs you your pins rather than a
-working panel.
+That directory is created `0700` and checked before it is used — a real
+directory, not a symlink, owned by you — and the plugin leaves the file alone
+entirely if any of that does not hold. Every bar instance watches the file, so
+pinning on one monitor updates the panel on the other; a mangled or oversized
+file costs you your pins rather than a working panel, and a write that fails
+puts the panel back in step with what is actually on disk.
 
 ---
 
