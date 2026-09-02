@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "shilai_li.recent-paths",
+  "name": "Recent Paths",
+  "version": "0.1.0",
+  "author": "Shilai Li",
+  "license": "MIT",
+  "description": "Reopen a recently used directory in a terminal or the file manager. Backed by zoxide.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Recent Paths",
+    "description": "Recently used directories, from zoxide",
+    "category": "Utilities",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "limit": 15
+    },
+    "schema": [
+      {
+        "key": "limit",
+        "type": "number",
+        "label": "Paths shown",
+        "description": "How many directories the list holds, pins included.",
+        "defaultValue": 15,
+        "min": 10,
+        "max": 20
+      }
+    ]
+  }
+}
