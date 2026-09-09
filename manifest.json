@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "shilai_li.recent-paths",
   "name": "Recent Paths",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Shilai Li",
   "license": "MIT",
   "description": "Reopen a recently used directory in a terminal or the file manager. Backed by zoxide.",
