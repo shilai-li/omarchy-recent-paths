@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -43,13 +44,13 @@ Panel {
     : ""
 
   // ---- Theme. Nothing here names a color; the palette does.
-  readonly property color contentForeground: bar ? bar.foreground : Color.foreground
+  readonly property color contentForeground: bar ? bar.foreground : Commons.Color.foreground
   readonly property string contentFontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property color dim: Qt.darker(contentForeground, 1.5)
   readonly property color dimmer: Qt.darker(contentForeground, 2.0)
-  readonly property color accentColor: Style.selectedStateColor(contentForeground, Color.accent)
-  readonly property color hoverFill: Style.hoverFillFor(contentForeground, Color.accent)
-  readonly property color selectedFill: Style.selectedFillFor(contentForeground, Color.accent)
+  readonly property color accentColor: Style.selectedStateColor(contentForeground, Commons.Color.accent)
+  readonly property color hoverFill: Style.hoverFillFor(contentForeground, Commons.Color.accent)
+  readonly property color selectedFill: Style.selectedFillFor(contentForeground, Commons.Color.accent)
 
   readonly property int rowHeight: Math.max(Style.space(24), Style.font.body + Style.space(12))
   // Twelve rows before the list starts scrolling. The panel is a shortcut,
@@ -177,7 +178,7 @@ Panel {
     height: root.rowHeight
     hasCursor: root.cursorActive && root.selectedIndex === index
     foreground: root.contentForeground
-    accent: Color.accent
+    accent: Commons.Color.accent
     fill: root.hoverFill
     currentFill: root.selectedFill
 

@@ -21,7 +21,7 @@ Non-negotiables:
   and nothing else.
 - **Keyboard-driven.** Every action has a key; the mouse is optional.
 - **Themed, never styled.** Zero hex literals, zero raw pixel sizes — only
-  `Color.*` and `Style.*`, so `omarchy theme set` repaints the plugin.
+  `Commons.Color.*` and `Style.*`, so `omarchy theme set` repaints the plugin.
 - **Minimal is the feature.** v1 deliberately has no project detection, no git
   status, no fuzzy search, no per-path commands, no calibration. Ask before
   adding a surface, a kind, or a setting.
@@ -154,10 +154,14 @@ that. Order the function so the release is unconditional.
 
 | Do | Don't |
 |---|---|
-| `Color.foreground/.accent/.popups.*` | any hex literal |
+| `Commons.Color.foreground/.accent/.popups.*` (`import qs.Commons as Commons`) | any hex literal, or a bare `Color.*` |
 | `Style.space(12)`, `Style.font.caption…body` | raw pixels, `pixelSize: 14` |
 | `Style.cornerRadius` (may be `0`), `CursorSurface` | always-rounded, hand-rolled hover fills |
-| `bar ? bar.foreground : Color.foreground` | assuming `bar` is set at construction |
+| `bar ? bar.foreground : Commons.Color.foreground` | assuming `bar` is set at construction |
+
+A bare `Color.foreground` does not fail at load: Qt 6.12's own `Color` type
+shadows the palette, the read comes back `undefined`, and the paint goes black
+or throws on every frame. Always read the palette through `Commons.Color`.
 
 Comment *why*, not *what*, in full sentences — match the shell's habit of a
 few lines above a block explaining the trade-off.
