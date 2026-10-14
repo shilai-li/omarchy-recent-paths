@@ -18,7 +18,18 @@ var DEFAULT_LIMIT = 15
 // display cap is MAX_LIMIT.
 var SCAN_DEPTH = 200
 
-var PIN_GLYPH = "★"
+// Material Design icons from the Nerd Font the shell already draws with — the
+// bar glyph is the same family. Written as surrogate pairs so the file reads
+// the same under node and under QML's engine.
+var GLYPH = {
+  folder: "󰉋",       // md-folder
+  star: "󰓎",         // md-star
+  starOutline: "󰓒",  // md-star_outline
+  terminal: "󰆍",     // md-console
+  folderOpen: "󰝰",   // md-folder_open
+  alert: "󰗖",        // md-alert_circle_outline
+  loading: "󰝲"       // md-loading
+}
 
 // ------------------------------------------------------------------- limits
 //
@@ -482,15 +493,108 @@ function displayPath(path, home) {
   return p
 }
 
+// Splits a row into the two lines it is drawn as: the directory's own name,
+// which is what the eye looks for, over the place it lives. Home and the root
+// have no parent worth printing, so they get one line.
+function splitDisplayPath(path, home) {
+  var shown = displayPath(path, home)
+  if (!shown) return { name: "", parent: "" }
+  if (shown === "~" || shown === "/") return { name: shown, parent: "" }
+  var cut = shown.lastIndexOf("/")
+  if (cut < 0) return { name: shown, parent: "" }
+  return { name: shown.slice(cut + 1), parent: cut === 0 ? "/" : shown.slice(0, cut) }
+}
+
+// The list is drawn as two groups, pins over zoxide's ranking. A row that
+// opens a group carries its title; mergeRows already guarantees the pins are
+// one contiguous run at the top.
+function sectionTitle(rows, index) {
+  if (!rows || index < 0 || index >= rows.length) return ""
+  var pinned = rows[index].pinned === true
+  if (index > 0 && (rows[index - 1].pinned === true) === pinned) return ""
+  return pinned ? "Pinned" : "Recent"
+}
+
+function isGroupEnd(rows, index) {
+  if (!rows || index < 0 || index >= rows.length) return false
+  if (index === rows.length - 1) return true
+  return (rows[index + 1].pinned === true) !== (rows[index].pinned === true)
+}
+
+// One name for where the scan stands, so the header badge, the empty state
+// and the notice under a list cannot disagree about it. A failed scan outranks
+// a missing zoxide: the failure is the newer fact.
+function scanState(zoxideMissing, scanned, scanFailed) {
+  if (!scanned) return "reading"
+  if (scanFailed) return "failed"
+  if (zoxideMissing) return "nozoxide"
+  return "ready"
+}
+
 // What the panel says instead of a list. Four different sentences, because
 // "we have not looked yet", "the look failed", "there is no zoxide to ask" and
 // "we looked and there is nothing" are four different situations and only the
 // last one is the user's to fix by cd-ing somewhere.
 function emptyMessage(zoxideMissing, scanned, scanFailed) {
-  if (!scanned) return "Reading recent directories…"
-  if (scanFailed) return "Could not read the directory list. Press r to try again."
-  if (zoxideMissing) return "zoxide is not installed. Install it, then cd around to build a list."
+  var state = scanState(zoxideMissing, scanned, scanFailed)
+  if (state === "reading") return "Reading recent directories…"
+  if (state === "failed") return "Could not read the directory list. Press r to try again."
+  if (state === "nozoxide") return "zoxide is not installed. Install it, then cd around to build a list."
   return "No recent directories yet. cd somewhere and come back."
+}
+
+function emptyTitle(state) {
+  if (state === "reading") return "Reading"
+  if (state === "failed") return "Couldn’t read the list"
+  if (state === "nozoxide") return "No zoxide"
+  return "Nothing here yet"
+}
+
+function emptyGlyph(state) {
+  if (state === "reading") return GLYPH.loading
+  if (state === "failed" || state === "nozoxide") return GLYPH.alert
+  return GLYPH.folder
+}
+
+// A list can be on screen and still be short of the whole story: pins shown
+// without zoxide behind them, or the last good list kept after a scan failed.
+// Either way the panel says so under the rows rather than passing the list
+// off as complete.
+function noticeMessage(zoxideMissing, scanned, scanFailed) {
+  var state = scanState(zoxideMissing, scanned, scanFailed)
+  if (state === "failed") return "Could not refresh the list, so this is the last one read. Press r to try again."
+  if (state === "nozoxide") return "zoxide is not installed, so only pins are listed. Install it, then cd around to build a list."
+  return ""
+}
+
+// The header badge. The count is the list's, pins included — the same number
+// `status` reports.
+function statusLabel(state, count) {
+  if (state === "reading") return "reading"
+  if (state === "failed") return "failed"
+  if (state === "nozoxide") return "no zoxide"
+  return count === 1 ? "1 path" : count + " paths"
+}
+
+function statusIsUrgent(state) { return state === "failed" || state === "nozoxide" }
+
+// The key rail under the list. With no rows there is nothing to move to, open
+// or pin, so it offers the keys that still do something.
+function railKeys(hasRows) {
+  if (hasRows) {
+    return [
+      { key: "↑↓", label: "move" },
+      { key: "enter", label: "terminal" },
+      { key: "f", label: "files" },
+      { key: "p", label: "pin" },
+      { key: "esc", label: "close" }
+    ]
+  }
+  return [
+    { key: "r", label: "reload" },
+    { key: "tab", label: "next panel" },
+    { key: "esc", label: "close" }
+  ]
 }
 
 function clampIndex(index, count) {
@@ -515,7 +619,7 @@ if (typeof module !== "undefined" && module.exports) {
     MAX_LIMIT: MAX_LIMIT,
     DEFAULT_LIMIT: DEFAULT_LIMIT,
     SCAN_DEPTH: SCAN_DEPTH,
-    PIN_GLYPH: PIN_GLYPH,
+    GLYPH: GLYPH,
     MAX_PATH_LENGTH: MAX_PATH_LENGTH,
     MAX_PINS: MAX_PINS,
     MAX_STATE_BYTES: MAX_STATE_BYTES,
@@ -556,7 +660,17 @@ if (typeof module !== "undefined" && module.exports) {
     parsePinned: parsePinned,
     serializePinned: serializePinned,
     displayPath: displayPath,
+    splitDisplayPath: splitDisplayPath,
+    sectionTitle: sectionTitle,
+    isGroupEnd: isGroupEnd,
+    scanState: scanState,
     emptyMessage: emptyMessage,
+    emptyTitle: emptyTitle,
+    emptyGlyph: emptyGlyph,
+    noticeMessage: noticeMessage,
+    statusLabel: statusLabel,
+    statusIsUrgent: statusIsUrgent,
+    railKeys: railKeys,
     clampIndex: clampIndex,
     moveIndex: moveIndex
   }

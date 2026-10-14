@@ -17,15 +17,22 @@ where you actually work.
   `omarchy theme set`.
 
 ```
-Recent Paths
-──────────────────────────────────────
-★ ~/program_data/github/second-brain
-  ~/Downloads
-  ~/.config/omarchy
-  ~/Documents
-  /mnt/storage
-──────────────────────────────────────
-↑↓ move   enter terminal   f files   p pin   esc close
+ Recent Paths                       15 paths
+ PINNED
+ ╭──────────────────────────────────────────╮
+ │ ★  second-brain                          │
+ │    ~/program_data/github                 │
+ ╰──────────────────────────────────────────╯
+ RECENT
+ ╭──────────────────────────────────────────╮
+ │ ▸  Downloads                  >_  ▭  ☆   │
+ │    ~                                     │
+ │ ▸  omarchy                               │
+ │    ~/.config                             │
+ │ ▸  storage                               │
+ │    /mnt                                  │
+ ╰──────────────────────────────────────────╯
+   ↑↓ move  enter terminal  f files  p pin  esc close
 ```
 
 ---
@@ -74,12 +81,18 @@ file too if you want them gone.
 | `↑` `↓` (or `k` `j`) | move, wrapping at both ends |
 | `enter` / `space` | open the directory in a terminal |
 | `f` | open it in the file manager |
-| `p` | pin / unpin — pins sort to the top with a `★` |
+| `p` | pin / unpin — pins move to their own group on top |
 | `r` | re-read the list |
 | `tab` / `shift+tab` | walk to the neighbouring bar panel |
 | `esc` | close |
 
 With the mouse: **left click** a row opens a terminal, **right click** pins it.
+The row under the cursor also shows three buttons — terminal, file manager,
+pin — that do the same as `enter`, `f` and `p`.
+
+Without zoxide the panel still lists your pins, with a note under them saying
+why nothing else is there; a scan that fails keeps the last good list on
+screen and says that too.
 
 The terminal is whatever `omarchy default terminal` is set to — the plugin
 launches through `xdg-terminal-exec`, same as `omarchy-launch-terminal`. The

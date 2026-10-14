@@ -249,6 +249,70 @@ check("the empty message says which kind of empty this is", () => {
   ok(M.emptyMessage(false, true, false).indexOf("No recent") >= 0, "a scan that found nothing")
 })
 
+check("a row splits into its name over where it lives", () => {
+  eq(M.splitDisplayPath("/home/me/src/app", "/home/me"), { name: "app", parent: "~/src" })
+  eq(M.splitDisplayPath("/home/me/src", "/home/me"), { name: "src", parent: "~" })
+  eq(M.splitDisplayPath("/home/me", "/home/me"), { name: "~", parent: "" }, "home is one line")
+  eq(M.splitDisplayPath("/mnt", "/home/me"), { name: "mnt", parent: "/" })
+  eq(M.splitDisplayPath("/", "/home/me"), { name: "/", parent: "" }, "so is the root")
+  eq(M.splitDisplayPath("", "/home/me"), { name: "", parent: "" })
+})
+
+check("the list is two groups, titled where each one starts", () => {
+  const rows = [
+    { path: "/a", pinned: true },
+    { path: "/b", pinned: true },
+    { path: "/c", pinned: false },
+    { path: "/d", pinned: false }
+  ]
+  eq([0, 1, 2, 3].map(i => M.sectionTitle(rows, i)), ["Pinned", "", "Recent", ""])
+  eq([0, 1, 2, 3].map(i => M.isGroupEnd(rows, i)), [false, true, false, true])
+
+  const noPins = rows.slice(2)
+  eq(M.sectionTitle(noPins, 0), "Recent", "no pins means no pinned group")
+  eq(M.isGroupEnd(noPins, 1), true)
+  eq(M.sectionTitle(rows, 9), "", "out of range")
+  eq(M.isGroupEnd([], 0), false)
+})
+
+check("one scan state drives the badge, the empty state and the notice", () => {
+  eq(M.scanState(false, false, false), "reading")
+  eq(M.scanState(true, true, true), "failed", "a failure outranks missing zoxide")
+  eq(M.scanState(true, true, false), "nozoxide")
+  eq(M.scanState(false, true, false), "ready")
+
+  eq(M.statusLabel("ready", 1), "1 path")
+  eq(M.statusLabel("ready", 12), "12 paths")
+  eq(M.statusLabel("nozoxide", 2), "no zoxide")
+  ok(M.statusIsUrgent("failed") && M.statusIsUrgent("nozoxide"), "trouble is urgent")
+  ok(!M.statusIsUrgent("ready") && !M.statusIsUrgent("reading"), "the rest is not")
+
+  ok(M.emptyTitle("ready") !== M.emptyTitle("failed"), "each empty state has its own title")
+  eq(M.emptyGlyph("ready"), M.GLYPH.folder)
+  eq(M.emptyGlyph("failed"), M.GLYPH.alert)
+
+  eq(M.noticeMessage(false, true, false), "", "a complete list needs no notice")
+  eq(M.noticeMessage(false, false, false), "", "nor does one still being read")
+  ok(M.noticeMessage(true, true, false).indexOf("only pins") >= 0, "pins without zoxide say so")
+  ok(M.noticeMessage(false, true, true).indexOf("last one") >= 0, "a kept list says it is stale")
+})
+
+check("the key rail offers only keys that do something", () => {
+  const withRows = M.railKeys(true).map(k => k.key)
+  ok(withRows.indexOf("enter") >= 0 && withRows.indexOf("p") >= 0, "a list can be opened and pinned")
+  const empty = M.railKeys(false).map(k => k.key)
+  ok(empty.indexOf("enter") < 0 && empty.indexOf("p") < 0, "an empty one cannot")
+  ok(empty.indexOf("r") >= 0 && empty.indexOf("esc") >= 0, "but can be reloaded or closed")
+})
+
+check("every glyph is one Nerd Font code point", () => {
+  Object.keys(M.GLYPH).forEach(name => {
+    const g = M.GLYPH[name]
+    eq(Array.from(g).length, 1, name + " is a single character")
+    ok(g.codePointAt(0) >= 0xF0000, name + " is in the Material Design range")
+  })
+})
+
 // ------------------------------------------------------------------ cursor
 
 check("the cursor wraps at both ends and survives a shrinking list", () => {
